@@ -361,6 +361,7 @@
     const App = () => {
       // Core State
       const [isPlaying, setIsPlaying] = useState(false);
+      const [hasStarted, setHasStarted] = useState(false);
       const [videoSrc, setVideoSrc] = useState(null);
       const [streamUrl, setStreamUrl] = useState('');
       const [loadErrorMsg, setLoadErrorMsg] = useState(null);
@@ -390,7 +391,6 @@
       
       // Presets
       const [presets, setPresets] = useState(INITIAL_PRESETS);
-      // const [assignMode, setAssignMode] = useState(false); // Cleaned up
       
       // Refs
       const canvasRef = useRef(null);
@@ -412,9 +412,13 @@
         gridRef.current = cells;
       }, []);
 
-      // Auto-load
+      // Auto-load (Modified for V2.5 - Do NOT auto-play)
       useEffect(() => {
-        if (!videoSrc && INITIAL_PRESETS[0].filename) handlePresetClick(INITIAL_PRESETS[0]);
+        if (!videoSrc && INITIAL_PRESETS[0].filename) {
+             const video = INITIAL_PRESETS[0];
+             setVideoSrc(processVideoUrl(video.filename));
+             // We do NOT trigger play here. We wait for user interaction.
+        }
       }, []);
 
       // Audio Monitoring
@@ -436,6 +440,7 @@
       useEffect(() => { if (videoRef.current) videoRef.current.playbackRate = playbackSpeed; }, [playbackSpeed]);
 
       const togglePlay = () => {
+        if (!hasStarted) setHasStarted(true);
         audioEngine.init();
         if (!isPlaying) {
           if (videoRef.current && videoSrc) videoRef.current.play().catch(console.error);
@@ -446,6 +451,7 @@
       };
 
       const handlePresetClick = (video) => {
+          setHasStarted(true);
           audioEngine.init();
           if (!video.filename) return;
           setIsPlaying(false);
@@ -458,6 +464,7 @@
       };
 
       const handleCustomUpload = (e) => {
+        setHasStarted(true);
         audioEngine.init();
         if (e.target.files && e.target.files[0]) {
           const url = URL.createObjectURL(e.target.files[0]);
@@ -472,6 +479,7 @@
       };
 
       const handleStreamSubmit = () => {
+          setHasStarted(true);
           audioEngine.init();
           if (!streamUrl) return;
           setVideoSrc(processVideoUrl(streamUrl));
@@ -620,7 +628,7 @@
           }}>
              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span style={{ fontWeight: 600, fontSize: '12px', letterSpacing: '1px' }}>TERRA TONES</span>
-                <span style={{ fontSize: '9px', color: '#666', border: '1px solid #333', padding: '1px 3px' }}>V2.4</span>
+                <span style={{ fontSize: '9px', color: '#666', border: '1px solid #333', padding: '1px 3px' }}>V2.5</span>
              </div>
              <div style={{ display: 'flex', gap: '1rem' }}>
                 <button 
@@ -696,9 +704,9 @@
                          <button onClick={togglePlay} 
                             style={{ 
                                 width: '100%', padding: '8px', fontSize: '10px', letterSpacing: '1px', cursor: 'pointer',
-                                background: isPlaying ? '#ddd' : '#222', color: isPlaying ? '#000' : '#888', border: '1px solid #444' 
+                                background: isPlaying ? '#ddd' : '#222', color: isPlaying ? '#000' : '#888', border: '1px solid #444', fontWeight: isPlaying ? 600 : 400 
                             }}>
-                            {isPlaying ? 'PAUSE SCAN' : 'RESUME SCAN'}
+                            {isPlaying ? '[ ⏸ PAUSE SCAN ]' : '[ ▶ START SCAN ]'}
                         </button>
                     </div>
                 </div>
@@ -716,6 +724,28 @@
              
              <canvas ref={canvasRef} style={{ position: 'absolute', width: '100%', height: '100%' }} />
 
+             {/* INITIAL START OVERLAY */}
+             {!hasStarted && !loadErrorMsg && videoSrc && (
+                 <div 
+                    onClick={() => {
+                        setHasStarted(true);
+                        togglePlay();
+                    }}
+                    style={{ 
+                        position: 'absolute', inset: 0, zIndex: 60,
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        background: 'rgba(0,0,0,0.6)', cursor: 'pointer', backdropFilter: 'blur(2px)'
+                    }}
+                 >
+                    <div style={{ 
+                        border: '1px solid #fff', padding: '20px 40px', background: '#000', color: '#fff', 
+                        letterSpacing: '2px', fontSize: '12px', textAlign: 'center', boxShadow: '0 0 20px rgba(0,0,0,0.5)'
+                    }}>
+                        [ INITIALIZE SYSTEM ]
+                    </div>
+                 </div>
+             )}
+
              {(!videoSrc || loadErrorMsg) && (
                  <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#111' }}>
                     <div style={{ border: '1px solid #333', padding: '2rem', textAlign: 'center', maxWidth: '400px' }}>
@@ -732,7 +762,7 @@
                  </div>
              )}
 
-            {videoSrc && audioSuspended && !loadErrorMsg && (
+            {hasStarted && videoSrc && audioSuspended && !loadErrorMsg && (
                 <div onClick={togglePlay} style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', background: '#f00', color: '#fff', padding: '5px 10px', fontSize: '10px', cursor: 'pointer', zIndex: 50 }}>
                     AUDIO OFF - CLICK TO START
                 </div>

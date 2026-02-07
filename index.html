@@ -80,8 +80,6 @@
       { id: 'v4', label: 'LAVA', filename: 'https://github.com/seanpeoples-collab/nature-sonification/blob/main/Lava.mp4', type: 'factory' },
       { id: 'v5', label: 'DRIZZLING', filename: 'https://github.com/seanpeoples-collab/nature-sonification/blob/main/Drizzling.mp4', type: 'factory' },
       { id: 'v6', label: 'PUDDLE', filename: 'https://github.com/seanpeoples-collab/nature-sonification/blob/main/Puddle.mp4', type: 'factory' },
-      { id: 'u1', label: 'SLOT A', filename: null, type: 'user' },
-      { id: 'u2', label: 'SLOT B', filename: null, type: 'user' },
     ];
 
     // -----------------------------------------------------------------------------
@@ -392,7 +390,7 @@
       
       // Presets
       const [presets, setPresets] = useState(INITIAL_PRESETS);
-      const [assignMode, setAssignMode] = useState(false);
+      // const [assignMode, setAssignMode] = useState(false); // Cleaned up
       
       // Refs
       const canvasRef = useRef(null);
@@ -449,20 +447,14 @@
 
       const handlePresetClick = (video) => {
           audioEngine.init();
-          if (assignMode) {
-            if (!videoSrc) return;
-            setPresets(presets.map(p => p.id === video.id ? { ...p, filename: videoSrc, label: `SAVED ${p.id}` } : p));
-            setAssignMode(false);
-          } else {
-            if (!video.filename) return;
-            setIsPlaying(false);
-            setCorsMode("anonymous");
-            setIsVisualOnly(false);
-            setLoadErrorMsg(null);
-            prevFrameDataRef.current = null;
-            setVideoSrc(processVideoUrl(video.filename));
-            setTimeout(() => { if (videoRef.current) { videoRef.current.play().catch(()=>{}); setIsPlaying(true); }}, 100);
-          }
+          if (!video.filename) return;
+          setIsPlaying(false);
+          setCorsMode("anonymous");
+          setIsVisualOnly(false);
+          setLoadErrorMsg(null);
+          prevFrameDataRef.current = null;
+          setVideoSrc(processVideoUrl(video.filename));
+          setTimeout(() => { if (videoRef.current) { videoRef.current.play().catch(()=>{}); setIsPlaying(true); }}, 100);
       };
 
       const handleCustomUpload = (e) => {
@@ -628,7 +620,7 @@
           }}>
              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span style={{ fontWeight: 600, fontSize: '12px', letterSpacing: '1px' }}>TERRA TONES</span>
-                <span style={{ fontSize: '9px', color: '#666', border: '1px solid #333', padding: '1px 3px' }}>V2.2</span>
+                <span style={{ fontSize: '9px', color: '#666', border: '1px solid #333', padding: '1px 3px' }}>V2.4</span>
              </div>
              <div style={{ display: 'flex', gap: '1rem' }}>
                 <button 
@@ -656,24 +648,34 @@
                 <div style={{ marginBottom: '16px' }}>
                     <div style={{ fontSize: '9px', color: '#666', marginBottom: '8px', letterSpacing: '1px', display: 'flex', justifyContent: 'space-between' }}>
                          <span>SIGNAL BANK</span>
-                         <button onClick={() => setAssignMode(!assignMode)} style={{ background: 'transparent', border: 'none', fontSize: '9px', cursor: 'pointer', color: assignMode ? '#fff' : '#444' }}>
-                            {assignMode ? '>> SELECT SLOT TO SAVE <<' : '[ SAVE CURRENT SIGNAL ]'}
-                         </button>
                     </div>
                     <div className="preset-scroll" style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px' }}>
+                        
                         {presets.map(p => (
                             <button key={p.id} onClick={() => handlePresetClick(p)} 
                                 style={{ 
                                     padding: '8px 12px', 
-                                    background: assignMode ? '#222' : (videoSrc === p.filename || (!videoSrc && !p.filename)) ? '#fff' : '#111', 
-                                    color: assignMode ? '#fff' : (videoSrc === p.filename || (!videoSrc && !p.filename)) ? '#000' : '#888',
-                                    border: assignMode ? '1px dashed #fff' : '1px solid #333',
+                                    background: (videoSrc === p.filename) ? '#fff' : '#111', 
+                                    color: (videoSrc === p.filename) ? '#000' : '#888',
+                                    border: '1px solid #333',
                                     cursor: 'pointer', fontSize: '10px', whiteSpace: 'nowrap', minWidth: '80px', textAlign: 'center'
                                 }}
                             >
                                 {p.label}
                             </button>
                         ))}
+
+                        <button onClick={() => fileInputRef.current?.click()} 
+                            style={{ 
+                                padding: '8px 12px', 
+                                background: '#222', 
+                                color: '#fff',
+                                border: '1px solid #444',
+                                cursor: 'pointer', fontSize: '10px', whiteSpace: 'nowrap', minWidth: '80px', textAlign: 'center', fontWeight: 600
+                            }}
+                        >
+                            [ ↑ UPLOAD ]
+                        </button>
                     </div>
                 </div>
 

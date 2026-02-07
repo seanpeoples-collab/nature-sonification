@@ -3,22 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nature Sonification Score</title>
+  <title>Eco-Scan Audio Tool</title>
   
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   
   <style>
-    body { margin: 0; overflow: hidden; background: #000; font-family: 'Rajdhani', sans-serif; }
+    body { margin: 0; overflow: hidden; background: #000; font-family: 'Inter', sans-serif; color: #fff; }
     canvas { display: block; }
     
-    /* Animation for the Audio Suspended warning */
+    /* Scrollbar styling for the controls */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #111; }
+    ::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
+    ::-webkit-scrollbar-thumb:hover { background: #666; }
+
+    /* Horizontal scrollbar for presets */
+    .preset-scroll::-webkit-scrollbar { height: 2px; }
+    .preset-scroll::-webkit-scrollbar-track { background: #111; }
+    .preset-scroll::-webkit-scrollbar-thumb { background: #444; }
+
+    select { appearance: none; -webkit-appearance: none; border-radius: 0; }
+    
     @keyframes pulse {
-        0% { transform: translateX(-50%) scale(1); opacity: 1; }
-        50% { transform: translateX(-50%) scale(1.05); opacity: 0.8; }
-        100% { transform: translateX(-50%) scale(1); opacity: 1; }
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
     }
   </style>
 
@@ -37,16 +49,17 @@
     // Data & Constants
     // -----------------------------------------------------------------------------
 
+    // Minor Pentatonic Scale
     const SCALE_FREQUENCIES = [
-      130.81, 155.56, 174.61, 196.00, 233.08, // C3 range
-      261.63, 311.13, 349.23, 392.00, 466.16, // C4 range
-      523.25, 622.25, 698.46, 783.99, 932.33, // C5 range
-      1046.50, 1244.50, 1396.91, 1567.98 // C6 range
+      130.81, 155.56, 174.61, 196.00, 233.08, // C3
+      261.63, 311.13, 349.23, 392.00, 466.16, // C4
+      523.25, 622.25, 698.46, 783.99, 932.33, // C5
+      1046.50, 1244.50, 1396.91, 1567.98 // C6
     ].reverse();
 
     const GRID_COLS = 16;
     const GRID_ROWS = 12;
-    const MAX_VOICES_PER_FRAME = 10; 
+    const MAX_VOICES_PER_FRAME = 12; 
 
     const INSTRUMENTS = [
       { label: 'ANALOG SYNTH', value: 'synth' },
@@ -61,16 +74,14 @@
     ];
 
     const INITIAL_PRESETS = [
-      { id: 'v1', label: 'SECTOR 01: BIRDS', filename: 'https://github.com/seanpeoples-collab/nature-sonification/blob/main/Birds.mp4', type: 'factory' },
-      { id: 'v2', label: 'SECTOR 02: LIGHTNING', filename: 'https://github.com/seanpeoples-collab/nature-sonification/blob/main/Lightning.mp4', type: 'factory' },
-      { id: 'v3', label: 'SECTOR 03: LEAVES', filename: 'https://github.com/seanpeoples-collab/nature-sonification/blob/main/Leaves.mp4', type: 'factory' },
-      { id: 'v4', label: 'SECTOR 04: LAVA', filename: 'https://github.com/seanpeoples-collab/nature-sonification/blob/main/Lava.mp4', type: 'factory' },
-      { id: 'v5', label: 'SECTOR 05: DRIZZLING', filename: 'https://github.com/seanpeoples-collab/nature-sonification/blob/main/Drizzling.mp4', type: 'factory' },
-      { id: 'v6', label: 'SECTOR 06: PUDDLE', filename: 'https://github.com/seanpeoples-collab/nature-sonification/blob/main/Puddle.mp4', type: 'factory' },
-      { id: 'u1', label: 'MEMORY A: EMPTY', filename: null, type: 'user' },
-      { id: 'u2', label: 'MEMORY B: EMPTY', filename: null, type: 'user' },
-      { id: 'u3', label: 'MEMORY C: EMPTY', filename: null, type: 'user' },
-      { id: 'u4', label: 'MEMORY D: EMPTY', filename: null, type: 'user' },
+      { id: 'v1', label: 'BIRDS', filename: 'https://github.com/seanpeoples-collab/nature-sonification/blob/main/Birds.mp4', type: 'factory' },
+      { id: 'v2', label: 'LIGHTNING', filename: 'https://github.com/seanpeoples-collab/nature-sonification/blob/main/Lightning.mp4', type: 'factory' },
+      { id: 'v3', label: 'LEAVES', filename: 'https://github.com/seanpeoples-collab/nature-sonification/blob/main/Leaves.mp4', type: 'factory' },
+      { id: 'v4', label: 'LAVA', filename: 'https://github.com/seanpeoples-collab/nature-sonification/blob/main/Lava.mp4', type: 'factory' },
+      { id: 'v5', label: 'DRIZZLING', filename: 'https://github.com/seanpeoples-collab/nature-sonification/blob/main/Drizzling.mp4', type: 'factory' },
+      { id: 'v6', label: 'PUDDLE', filename: 'https://github.com/seanpeoples-collab/nature-sonification/blob/main/Puddle.mp4', type: 'factory' },
+      { id: 'u1', label: 'SLOT A', filename: null, type: 'user' },
+      { id: 'u2', label: 'SLOT B', filename: null, type: 'user' },
     ];
 
     // -----------------------------------------------------------------------------
@@ -91,6 +102,7 @@
         this.delayOutputGain = null;
         this.noiseBuffer = null;
         this.currentInstrument = 'bells'; 
+        this.driftAmount = 0; // New parameter for "Harmonic Drift"
       }
 
       init() {
@@ -105,6 +117,7 @@
         this.masterGain = this.ctx.createGain();
         this.masterGain.gain.value = 0.4;
 
+        // Master Chain
         this.distortionNode = this.ctx.createWaveShaper();
         this.distortionNode.curve = this.makeDistortionCurve(0);
         this.distortionNode.oversample = '4x';
@@ -116,38 +129,23 @@
 
         this.compressor = this.ctx.createDynamicsCompressor();
         this.compressor.threshold.value = -20;
-        this.compressor.knee.value = 30;
         this.compressor.ratio.value = 12;
-        this.compressor.attack.value = 0.003;
-        this.compressor.release.value = 0.25;
 
         this.masterGain.connect(this.distortionNode);
         this.distortionNode.connect(this.filterNode);
         this.filterNode.connect(this.compressor);
         this.compressor.connect(this.ctx.destination);
 
+        // Reverb
         this.reverbNode = this.ctx.createConvolver();
         this.reverbGain = this.ctx.createGain();
         this.reverbGain.gain.value = 0.4;
-
-        const duration = 3.0; 
-        const decay = 3.0;
-        const rate = this.ctx.sampleRate;
-        const length = rate * duration;
-        const impulse = this.ctx.createBuffer(2, length, rate);
-        const left = impulse.getChannelData(0);
-        const right = impulse.getChannelData(1);
-        for (let i = 0; i < length; i++) {
-          const n = i / length;
-          const white = (Math.random() * 2 - 1);
-          left[i] = white * Math.pow(1 - n, decay);
-          right[i] = white * Math.pow(1 - n, decay);
-        }
-        this.reverbNode.buffer = impulse;
+        this.generateImpulse();
         
         this.reverbNode.connect(this.reverbGain);
         this.reverbGain.connect(this.masterGain);
 
+        // Delay
         this.delayNode = this.ctx.createDelay(5.0);
         this.delayNode.delayTime.value = 0.3;
         this.delayFeedbackGain = this.ctx.createGain();
@@ -160,12 +158,30 @@
         this.delayNode.connect(this.delayFeedbackGain);
         this.delayFeedbackGain.connect(this.delayNode);
 
+        // Noise Buffer
+        const rate = this.ctx.sampleRate;
         const noiseLen = rate * 2;
         this.noiseBuffer = this.ctx.createBuffer(1, noiseLen, rate);
         const output = this.noiseBuffer.getChannelData(0);
         for (let i = 0; i < noiseLen; i++) {
           output[i] = Math.random() * 2 - 1;
         }
+      }
+
+      generateImpulse() {
+         if(!this.ctx) return;
+         const rate = this.ctx.sampleRate;
+         const length = rate * 3.0;
+         const impulse = this.ctx.createBuffer(2, length, rate);
+         const left = impulse.getChannelData(0);
+         const right = impulse.getChannelData(1);
+         for (let i = 0; i < length; i++) {
+           const n = i / length;
+           const white = (Math.random() * 2 - 1);
+           left[i] = white * Math.pow(1 - n, 3.0);
+           right[i] = white * Math.pow(1 - n, 3.0);
+         }
+         this.reverbNode.buffer = impulse;
       }
 
       makeDistortionCurve(amount) {
@@ -180,43 +196,23 @@
         return curve;
       }
 
-      setInstrument(inst) {
-        this.currentInstrument = inst;
-      }
+      setDrift(val) { this.driftAmount = val; }
+      setInstrument(inst) { this.currentInstrument = inst; }
+      
+      setReverbMix(value) { if (this.reverbGain && this.ctx) this.reverbGain.gain.setTargetAtTime(value, this.ctx.currentTime, 0.1); }
+      setDelayTime(value) { if (this.delayNode && this.ctx) this.delayNode.delayTime.setTargetAtTime(0.05 + value * 0.95, this.ctx.currentTime, 0.1); }
+      setDelayFeedback(value) { if (this.delayFeedbackGain && this.ctx) this.delayFeedbackGain.gain.setTargetAtTime(value * 0.9, this.ctx.currentTime, 0.1); }
+      setFilterFreq(value) { if (this.filterNode && this.ctx) this.filterNode.frequency.setTargetAtTime(40 * Math.pow(20000 / 40, value), this.ctx.currentTime, 0.1); }
+      setDistortion(value) { if (this.distortionNode) this.distortionNode.curve = this.makeDistortionCurve(value * 4); }
 
-      setReverbMix(value) {
-        if (this.reverbGain && this.ctx) {
-          this.reverbGain.gain.setTargetAtTime(value, this.ctx.currentTime, 0.1);
-        }
-      }
-
-      setDelayTime(value) {
-        if (this.delayNode && this.ctx) {
-          const time = 0.05 + value * 0.95;
-          this.delayNode.delayTime.setTargetAtTime(time, this.ctx.currentTime, 0.1);
-        }
-      }
-
-      setDelayFeedback(value) {
-        if (this.delayFeedbackGain && this.ctx) {
-          const fb = value * 0.9;
-          this.delayFeedbackGain.gain.setTargetAtTime(fb, this.ctx.currentTime, 0.1);
-        }
-      }
-
-      setFilterFreq(value) {
-        if (this.filterNode && this.ctx) {
-          const minValue = 40;
-          const maxValue = 20000;
-          const freq = minValue * Math.pow(maxValue / minValue, value);
-          this.filterNode.frequency.setTargetAtTime(freq, this.ctx.currentTime, 0.1);
-        }
-      }
-
-      setDistortion(value) {
-        if (this.distortionNode) {
-          this.distortionNode.curve = this.makeDistortionCurve(value * 4);
-        }
+      // Helper to apply Drift (detune)
+      applyDrift(osc, now) {
+         if (this.driftAmount > 0.01) {
+             const detune = (Math.random() * 2 - 1) * (this.driftAmount * 100); // +/- cents
+             osc.detune.setValueAtTime(detune, now);
+             // Slow LFO effect via ramp
+             osc.detune.linearRampToValueAtTime((Math.random() * 2 - 1) * (this.driftAmount * 100), now + 0.5);
+         }
       }
 
       trigger(row, col, intensity) {
@@ -244,224 +240,100 @@
 
       playDrum(row, intensity, now, dest) {
         if (!this.ctx || !this.noiseBuffer) return;
-
         const gain = this.ctx.createGain();
         gain.connect(dest);
 
-        if (row < 4) {
-            // Hi-Hat
+        // Simple drum mapping logic
+        if (row < 4) { // Hi-Hat
             const src = this.ctx.createBufferSource();
             src.buffer = this.noiseBuffer;
             const filter = this.ctx.createBiquadFilter();
-            filter.type = 'highpass';
-            filter.frequency.value = 8000;
-            src.connect(filter);
-            filter.connect(gain);
-            const vol = intensity * 0.4;
-            gain.gain.setValueAtTime(vol, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05 + (intensity * 0.05));
-            src.start(now);
-            src.stop(now + 0.2);
-        } else if (row < 8) {
-            // Snare
-            const osc = this.ctx.createOscillator();
-            osc.type = 'triangle';
-            osc.frequency.value = 150 + (Math.random() * 50);
+            filter.type = 'highpass'; filter.frequency.value = 8000;
+            src.connect(filter); filter.connect(gain);
+            gain.gain.setValueAtTime(intensity * 0.3, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+            src.start(now); src.stop(now + 0.2);
+        } else if (row < 8) { // Snare-ish
             const noiseSrc = this.ctx.createBufferSource();
             noiseSrc.buffer = this.noiseBuffer;
             const filter = this.ctx.createBiquadFilter();
-            filter.type = 'bandpass';
-            filter.frequency.value = 2000;
-            filter.Q.value = 1;
-            const noiseGain = this.ctx.createGain();
-            const oscGain = this.ctx.createGain();
-            noiseSrc.connect(filter);
-            filter.connect(noiseGain);
-            noiseGain.connect(gain);
-            osc.connect(oscGain);
-            oscGain.connect(gain);
-            const vol = intensity * 0.6;
-            noiseGain.gain.setValueAtTime(vol, now);
-            noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-            oscGain.gain.setValueAtTime(vol * 0.5, now);
-            oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
-            noiseSrc.start(now);
-            osc.start(now);
-            noiseSrc.stop(now + 0.2);
-            osc.stop(now + 0.2);
-        } else {
-            // Kick
+            filter.type = 'bandpass'; filter.frequency.value = 1500;
+            noiseSrc.connect(filter); filter.connect(gain);
+            gain.gain.setValueAtTime(intensity * 0.5, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            noiseSrc.start(now); noiseSrc.stop(now + 0.2);
+        } else { // Kick
             const osc = this.ctx.createOscillator();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(120, now);
-            osc.frequency.exponentialRampToValueAtTime(50, now + 0.1);
+            osc.frequency.setValueAtTime(100, now);
+            osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
             osc.connect(gain);
-            const vol = intensity * 0.8;
-            gain.gain.setValueAtTime(vol, now);
+            gain.gain.setValueAtTime(intensity * 0.8, now);
             gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-            osc.start(now);
-            osc.stop(now + 0.4);
+            osc.start(now); osc.stop(now + 0.4);
         }
       }
 
       playMelodic(row, intensity, now, dest) {
           if (!this.ctx) return;
-          
           const scaleIndex = Math.floor((row / GRID_ROWS) * SCALE_FREQUENCIES.length);
           const frequency = SCALE_FREQUENCIES[Math.min(scaleIndex, SCALE_FREQUENCIES.length - 1)];
           const gain = this.ctx.createGain();
           gain.connect(dest);
 
-          switch (this.currentInstrument) {
-            case 'marimba': {
-                const osc = this.ctx.createOscillator();
-                osc.type = 'sine';
-                osc.frequency.value = frequency;
-                osc.connect(gain);
-                const vol = intensity * 0.6;
-                gain.gain.setValueAtTime(0, now);
-                gain.gain.linearRampToValueAtTime(vol, now + 0.005);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-                osc.start(now);
-                osc.stop(now + 0.4);
-                break;
-            }
-            case 'xylophone': {
-                const osc1 = this.ctx.createOscillator();
-                const osc2 = this.ctx.createOscillator();
-                osc1.type = 'sine';
-                osc2.type = 'sine';
-                osc1.frequency.value = frequency;
-                osc2.frequency.value = frequency * 3;
-                const g2 = this.ctx.createGain();
-                g2.gain.value = 0.3;
-                osc1.connect(gain);
-                osc2.connect(g2);
-                g2.connect(gain);
-                const vol = intensity * 0.6;
-                gain.gain.setValueAtTime(0, now);
-                gain.gain.linearRampToValueAtTime(vol, now + 0.002);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-                osc1.start(now);
-                osc2.start(now);
-                osc1.stop(now + 0.3);
-                osc2.stop(now + 0.3);
-                break;
-            }
-            case 'bells': {
-                const carrier = this.ctx.createOscillator();
-                const modulator = this.ctx.createOscillator();
-                const modGain = this.ctx.createGain();
-                carrier.frequency.value = frequency;
-                modulator.frequency.value = frequency * 1.4; 
-                modulator.connect(modGain);
-                modGain.connect(carrier.frequency);
-                carrier.connect(gain);
-                modGain.gain.setValueAtTime(frequency * 2, now);
-                modGain.gain.exponentialRampToValueAtTime(1, now + 1.0);
-                const vol = intensity * 0.5;
-                gain.gain.setValueAtTime(0, now);
-                gain.gain.linearRampToValueAtTime(vol, now + 0.01);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 2.0); 
-                carrier.start(now);
-                modulator.start(now);
-                carrier.stop(now + 2.5);
-                modulator.stop(now + 2.5);
-                break;
-            }
-            case 'epiano': {
-                const carrier = this.ctx.createOscillator();
-                const modulator = this.ctx.createOscillator();
-                const modGain = this.ctx.createGain();
-                carrier.type = 'sine';
-                modulator.type = 'sine';
-                carrier.frequency.value = frequency;
-                modulator.frequency.value = frequency;
-                modulator.connect(modGain);
-                modGain.connect(carrier.frequency);
-                carrier.connect(gain);
-                modGain.gain.setValueAtTime(frequency * 0.5, now);
-                modGain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-                const vol = intensity * 0.7;
-                gain.gain.setValueAtTime(0, now);
-                gain.gain.linearRampToValueAtTime(vol, now + 0.01);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
-                carrier.start(now);
-                modulator.start(now);
-                carrier.stop(now + 2.0);
-                modulator.stop(now + 2.0);
-                break;
-            }
-            case 'pluck': {
-                const osc = this.ctx.createOscillator();
-                osc.type = 'sawtooth';
-                osc.frequency.value = frequency;
-                const filter = this.ctx.createBiquadFilter();
-                filter.type = 'lowpass';
-                filter.Q.value = 5;
-                osc.connect(filter);
-                filter.connect(gain);
-                filter.frequency.setValueAtTime(frequency, now);
-                filter.frequency.exponentialRampToValueAtTime(frequency * 6, now + 0.05);
-                filter.frequency.exponentialRampToValueAtTime(frequency, now + 0.3);
-                const vol = intensity * 0.4;
-                gain.gain.setValueAtTime(0, now);
-                gain.gain.linearRampToValueAtTime(vol, now + 0.005);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-                osc.start(now);
-                osc.stop(now + 0.5);
-                break;
-            }
-            case 'bass': {
-                const osc = this.ctx.createOscillator();
-                osc.type = Math.random() > 0.5 ? 'sine' : 'triangle';
-                osc.frequency.value = frequency * 0.5;
-                osc.connect(gain);
-                const vol = intensity * 0.8;
-                gain.gain.setValueAtTime(0, now);
-                gain.gain.linearRampToValueAtTime(vol, now + 0.02);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
-                osc.start(now);
-                osc.stop(now + 1.0);
-                break;
-            }
-            case 'glitch': {
-                const carrier = this.ctx.createOscillator();
-                const modulator = this.ctx.createOscillator();
-                const modGain = this.ctx.createGain();
-                carrier.type = 'sine';
-                modulator.type = 'square';
-                carrier.frequency.value = frequency;
-                modulator.frequency.value = frequency * (Math.random() * 8 + 0.5); 
-                modulator.connect(modGain);
-                modGain.connect(carrier.frequency);
-                carrier.connect(gain);
-                modGain.gain.setValueAtTime(frequency * 10, now);
-                modGain.gain.exponentialRampToValueAtTime(0.1, now + 0.1);
-                const vol = intensity * 0.6;
-                gain.gain.setValueAtTime(0, now);
-                gain.gain.linearRampToValueAtTime(vol, now + 0.001);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-                carrier.start(now);
-                modulator.start(now);
-                carrier.stop(now + 0.2);
-                modulator.stop(now + 0.2);
-                break;
-            }
-            default: {
-                const osc = this.ctx.createOscillator();
-                osc.type = Math.random() > 0.6 ? 'triangle' : 'sine';
-                osc.frequency.value = frequency;
-                osc.connect(gain);
-                const vol = intensity * 0.4;
-                const duration = 0.1 + (intensity * 0.3);
-                gain.gain.setValueAtTime(0, now);
-                gain.gain.linearRampToValueAtTime(vol, now + 0.02);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-                osc.start(now);
-                osc.stop(now + duration + 0.1);
-                break;
-            }
+          // Simple Synthesizer Mapping
+          if (this.currentInstrument === 'marimba' || this.currentInstrument === 'xylophone' || this.currentInstrument === 'bells') {
+              // Sine based
+              const osc = this.ctx.createOscillator();
+              osc.type = 'sine';
+              osc.frequency.value = frequency;
+              this.applyDrift(osc, now);
+              
+              if(this.currentInstrument === 'bells') {
+                  // FM
+                  const mod = this.ctx.createOscillator();
+                  const modG = this.ctx.createGain();
+                  mod.frequency.value = frequency * 2.4;
+                  modG.gain.value = frequency;
+                  mod.connect(modG); modG.connect(osc.frequency);
+                  mod.start(now); mod.stop(now+1);
+              }
+
+              osc.connect(gain);
+              gain.gain.setValueAtTime(0, now);
+              gain.gain.linearRampToValueAtTime(intensity * 0.5, now + 0.01);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+              osc.start(now); osc.stop(now + 0.6);
+
+          } else if (this.currentInstrument === 'pluck' || this.currentInstrument === 'bass') {
+              // Sawtooth based
+              const osc = this.ctx.createOscillator();
+              osc.type = 'sawtooth';
+              osc.frequency.value = this.currentInstrument === 'bass' ? frequency * 0.5 : frequency;
+              this.applyDrift(osc, now);
+
+              const filter = this.ctx.createBiquadFilter();
+              filter.type = 'lowpass';
+              osc.connect(filter); filter.connect(gain);
+              
+              filter.frequency.setValueAtTime(frequency, now);
+              filter.frequency.exponentialRampToValueAtTime(frequency * 4, now + 0.05);
+              filter.frequency.exponentialRampToValueAtTime(frequency, now + 0.3);
+
+              gain.gain.setValueAtTime(0, now);
+              gain.gain.linearRampToValueAtTime(intensity * 0.4, now + 0.01);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+              osc.start(now); osc.stop(now + 0.5);
+          } else {
+              // Standard Synth
+              const osc = this.ctx.createOscillator();
+              osc.type = 'triangle';
+              osc.frequency.value = frequency;
+              this.applyDrift(osc, now);
+              osc.connect(gain);
+              gain.gain.setValueAtTime(0, now);
+              gain.gain.linearRampToValueAtTime(intensity * 0.4, now + 0.02);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+              osc.start(now); osc.stop(now + 0.4);
           }
       }
     }
@@ -469,60 +341,60 @@
     const audioEngine = new AudioEngine();
 
     // -----------------------------------------------------------------------------
-    // Visual & Logic Engine
+    // App Logic
     // -----------------------------------------------------------------------------
 
     const processVideoUrl = (url) => {
         let finalUrl = url.trim();
         if (finalUrl.includes('dropbox.com')) {
             const base = finalUrl.split('?')[0];
-            if (base.includes('/scl/fi/')) {
-                const rlkeyMatch = finalUrl.match(/rlkey=([a-zA-Z0-9]+)/);
-                if (rlkeyMatch) {
-                    finalUrl = `${base}?rlkey=${rlkeyMatch[1]}&raw=1`;
-                } else {
-                     finalUrl = `${base}?raw=1`;
-                }
-            } else {
-                 finalUrl = `${base}?raw=1`;
-            }
+            finalUrl = base.includes('/scl/fi/') 
+                ? `${base}?rlkey=${(finalUrl.match(/rlkey=([a-zA-Z0-9]+)/) || [])[1]}&raw=1` 
+                : `${base}?raw=1`;
         } else if (finalUrl.includes('drive.google.com')) {
-             const idMatch = finalUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
-            if (idMatch && idMatch[1]) {
-               finalUrl = `https://drive.google.com/uc?export=download&id=${idMatch[1]}`;
-            }
+            const idMatch = finalUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+            if (idMatch) finalUrl = `https://drive.google.com/uc?export=download&id=${idMatch[1]}`;
         } else if (finalUrl.includes('github.com')) {
-            finalUrl = finalUrl
-                .replace(/^(https?:\/\/)(www\.)?github\.com/, '$1raw.githubusercontent.com')
-                .replace('/blob/', '/');
+            finalUrl = finalUrl.replace(/^(https?:\/\/)(www\.)?github\.com/, '$1raw.githubusercontent.com').replace('/blob/', '/');
         }
         return finalUrl;
     };
 
     const App = () => {
+      // Core State
       const [isPlaying, setIsPlaying] = useState(false);
-      const [selectedVideoId, setSelectedVideoId] = useState(null);
+      const [videoSrc, setVideoSrc] = useState(null);
+      const [streamUrl, setStreamUrl] = useState('');
+      const [loadErrorMsg, setLoadErrorMsg] = useState(null);
       const [corsMode, setCorsMode] = useState("anonymous");
       const [isVisualOnly, setIsVisualOnly] = useState(false);
       const [audioSuspended, setAudioSuspended] = useState(false);
+      
+      // UI State
       const [showControls, setShowControls] = useState(true);
       const [showEmbedModal, setShowEmbedModal] = useState(false);
+      
+      // Parameters
       const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
       const [sensitivity, setSensitivity] = useState(0.5); 
       const [instrument, setInstrumentState] = useState('bells');
+      
+      // Generative FX
+      const [chaosLevel, setChaosLevel] = useState(0.0);
+      const [harmonicDrift, setHarmonicDriftState] = useState(0.0);
+
+      // Audio FX
       const [reverbMix, setReverbMix] = useState(0.4);
       const [delayTime, setDelayTimeState] = useState(0.3);
       const [delayFeedback, setDelayFeedbackState] = useState(0.4);
       const [filterFreq, setFilterFreqState] = useState(1.0);
       const [distortion, setDistortionState] = useState(0.0);
-      const [visualDecay, setVisualDecay] = useState(0.0);
-      const [chromaticShift, setChromaticShift] = useState(0.0);
-      const [videoSrc, setVideoSrc] = useState(null);
-      const [streamUrl, setStreamUrl] = useState('');
-      const [loadErrorMsg, setLoadErrorMsg] = useState(null);
+      
+      // Presets
       const [presets, setPresets] = useState(INITIAL_PRESETS);
       const [assignMode, setAssignMode] = useState(false);
       
+      // Refs
       const canvasRef = useRef(null);
       const videoRef = useRef(null);
       const analysisCanvasRef = useRef(null);
@@ -531,6 +403,7 @@
       const gridRef = useRef([]);
       const prevFrameDataRef = useRef(null);
       
+      // Init Grid
       useEffect(() => {
         const cells = [];
         for(let r=0; r<GRID_ROWS; r++) {
@@ -541,148 +414,90 @@
         gridRef.current = cells;
       }, []);
 
+      // Auto-load
       useEffect(() => {
-        if (!videoSrc && !selectedVideoId && INITIAL_PRESETS[0].filename) {
-            handlePresetClick(INITIAL_PRESETS[0]);
-        }
+        if (!videoSrc && INITIAL_PRESETS[0].filename) handlePresetClick(INITIAL_PRESETS[0]);
       }, []);
 
+      // Audio Monitoring
       useEffect(() => {
-        const checkAudio = () => {
-            if (audioEngine.ctx && audioEngine.ctx.state === 'suspended') {
-                setAudioSuspended(true);
-            } else {
-                setAudioSuspended(false);
-            }
-        };
-        const interval = setInterval(checkAudio, 500);
+        const interval = setInterval(() => {
+            setAudioSuspended(audioEngine.ctx && audioEngine.ctx.state === 'suspended');
+        }, 500);
         return () => clearInterval(interval);
       }, []);
 
+      // Param Sync
       useEffect(() => { audioEngine.setReverbMix(reverbMix); }, [reverbMix]);
       useEffect(() => { audioEngine.setDelayTime(delayTime); }, [delayTime]);
       useEffect(() => { audioEngine.setDelayFeedback(delayFeedback); }, [delayFeedback]);
       useEffect(() => { audioEngine.setFilterFreq(filterFreq); }, [filterFreq]);
       useEffect(() => { audioEngine.setDistortion(distortion); }, [distortion]);
       useEffect(() => { audioEngine.setInstrument(instrument); }, [instrument]);
-
-      useEffect(() => {
-        if (videoRef.current) {
-          videoRef.current.playbackRate = playbackSpeed;
-        }
-      }, [playbackSpeed]);
+      useEffect(() => { audioEngine.setDrift(harmonicDrift); }, [harmonicDrift]);
+      useEffect(() => { if (videoRef.current) videoRef.current.playbackRate = playbackSpeed; }, [playbackSpeed]);
 
       const togglePlay = () => {
         audioEngine.init();
         if (!isPlaying) {
-          if (videoRef.current && videoSrc) {
-            videoRef.current.play().catch(e => console.log("Video play error:", e.message));
-          }
+          if (videoRef.current && videoSrc) videoRef.current.play().catch(console.error);
         } else {
-          if (videoRef.current) {
-            videoRef.current.pause();
-          }
+          if (videoRef.current) videoRef.current.pause();
         }
         setIsPlaying(!isPlaying);
       };
 
       const handlePresetClick = (video) => {
           audioEngine.init();
-
           if (assignMode) {
             if (!videoSrc) return;
-            const newPresets = presets.map(p => {
-                if (p.id === video.id) {
-                    return {
-                        ...p,
-                        filename: videoSrc,
-                        label: p.type === 'factory' 
-                            ? `SECTOR ${p.id.replace('v','')}: [LINKED]` 
-                            : `MEMORY ${p.id.replace('u','')}: [SAVED]`
-                    };
-                }
-                return p;
-            });
-            setPresets(newPresets);
+            setPresets(presets.map(p => p.id === video.id ? { ...p, filename: videoSrc, label: `SAVED ${p.id}` } : p));
             setAssignMode(false);
           } else {
             if (!video.filename) return;
             setIsPlaying(false);
             setCorsMode("anonymous");
             setIsVisualOnly(false);
-            setSelectedVideoId(video.id);
             setLoadErrorMsg(null);
             prevFrameDataRef.current = null;
-            const processedUrl = processVideoUrl(video.filename);
-            setVideoSrc(processedUrl);
-            setTimeout(() => {
-                if (videoRef.current) {
-                    videoRef.current.play().catch(() => {});
-                    setIsPlaying(true);
-                }
-            }, 100);
+            setVideoSrc(processVideoUrl(video.filename));
+            setTimeout(() => { if (videoRef.current) { videoRef.current.play().catch(()=>{}); setIsPlaying(true); }}, 100);
           }
       };
 
       const handleCustomUpload = (e) => {
         audioEngine.init();
         if (e.target.files && e.target.files[0]) {
-          const file = e.target.files[0];
-          const url = URL.createObjectURL(file);
+          const url = URL.createObjectURL(e.target.files[0]);
           setVideoSrc(url);
-          setSelectedVideoId('custom');
           setLoadErrorMsg(null);
           setCorsMode(undefined); 
           setIsVisualOnly(false);
           setIsPlaying(false);
           prevFrameDataRef.current = null;
-          setTimeout(() => {
-            if (videoRef.current) {
-                 videoRef.current.play().catch(() => {});
-                 setIsPlaying(true);
-            }
-          }, 200);
+          setTimeout(() => { if (videoRef.current) { videoRef.current.play().catch(()=>{}); setIsPlaying(true); }}, 200);
         }
       };
 
       const handleStreamSubmit = () => {
           audioEngine.init();
           if (!streamUrl) return;
-          const finalUrl = processVideoUrl(streamUrl);
-          setVideoSrc(finalUrl);
-          setSelectedVideoId('stream');
+          setVideoSrc(processVideoUrl(streamUrl));
           setLoadErrorMsg(null);
           setCorsMode("anonymous");
           setIsVisualOnly(false);
           setIsPlaying(false);
           prevFrameDataRef.current = null;
-          setTimeout(() => {
-            if (videoRef.current) {
-                 videoRef.current.play().catch(() => {});
-                 setIsPlaying(true);
-            }
-          }, 200);
+          setTimeout(() => { if (videoRef.current) { videoRef.current.play().catch(()=>{}); setIsPlaying(true); }}, 200);
       };
 
       const handleVideoError = (e) => {
-          const target = e.target;
-          const failedSrc = target.src || videoSrc || "unknown";
-          console.warn(`Video load error (State: ${corsMode}): ${failedSrc}`);
-
           if (corsMode === "anonymous") {
               setCorsMode(undefined);
               setIsVisualOnly(true);
               return;
           }
-          
-          let msg = "FAILED TO LOAD VIDEO SIGNAL";
-          if (failedSrc && !failedSrc.startsWith('blob:')) {
-              const parts = failedSrc.split('/');
-              const fileName = parts[parts.length - 1];
-              msg = `FILE NOT FOUND OR ACCESS DENIED: ${fileName.substring(0, 20)}...`;
-          }
-          
-          setLoadErrorMsg(msg);
+          setLoadErrorMsg("SIGNAL FAILED. CHECK FILE PERMISSIONS.");
           setIsPlaying(false);
           setVideoSrc(null); 
       };
@@ -702,20 +517,10 @@
 
             const ctx = canvas.getContext('2d');
             if (ctx) {
-              if (visualDecay <= 0.05) {
-                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-              } else {
-                 ctx.save();
-                 ctx.globalCompositeOperation = 'destination-out';
-                 ctx.fillStyle = `rgba(0, 0, 0, ${1.0 - visualDecay})`;
-                 ctx.fillRect(0, 0, canvas.width, canvas.height);
-                 ctx.restore();
-              }
-
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
               ctx.save();
               ctx.scale(dpr, dpr);
-              drawGrid(ctx, rect.width, rect.height);
-
+              
               if (isPlaying && video && !video.paused && !video.ended && !loadErrorMsg && !isVisualOnly) {
                 analyzeMotion(video, rect.width, rect.height);
               }
@@ -724,19 +529,6 @@
             }
           }
           requestRef.current = requestAnimationFrame(animate);
-        };
-
-        const drawGrid = (ctx, w, h) => {
-          ctx.strokeStyle = 'rgba(30, 255, 200, 0.15)';
-          ctx.lineWidth = 1;
-          const cellW = w / GRID_COLS;
-          const cellH = h / GRID_ROWS;
-          for(let i=0; i<=GRID_COLS; i++) {
-            ctx.beginPath(); ctx.moveTo(i * cellW, 0); ctx.lineTo(i * cellW, h); ctx.stroke();
-          }
-          for(let i=0; i<=GRID_ROWS; i++) {
-            ctx.beginPath(); ctx.moveTo(0, i * cellH); ctx.lineTo(w, i * cellH); ctx.stroke();
-          }
         };
 
         const analyzeMotion = (video, displayW, displayH) => {
@@ -759,6 +551,14 @@
                 
                 for (let i = 0; i < gridRef.current.length; i++) {
                     const cell = gridRef.current[i];
+                    
+                    if (chaosLevel > 0 && Math.random() < (chaosLevel * 0.005)) {
+                        triggers.push({ idx: i, intensity: Math.random() * 0.8 + 0.2 });
+                        cell.active = 1.0;
+                        cell.cooldown = 10;
+                        continue; 
+                    }
+
                     const rIdx = (i * 4);
                     const rDiff = Math.abs(frameData[rIdx] - prevFrameDataRef.current[rIdx]);
                     const gDiff = Math.abs(frameData[rIdx+1] - prevFrameDataRef.current[rIdx+1]);
@@ -790,7 +590,7 @@
             }
             prevFrameDataRef.current = Uint8ClampedArray.from(frameData);
           } catch (e) { 
-              console.error("Analysis Security Error:", e);
+              console.error(e);
               setIsVisualOnly(true);
           }
         };
@@ -802,591 +602,202 @@
             if (cell.active > 0.01) {
               const x = cell.x * cellW;
               const y = cell.y * cellH;
-              if (chromaticShift > 0.05) {
-                 const offset = chromaticShift * 10 * cell.active;
-                 ctx.fillStyle = `rgba(255, 0, 50, ${cell.active * 0.5})`;
-                 ctx.fillRect(x + 2 - offset, y + 2, cellW - 4, cellH - 4);
-                 ctx.fillStyle = `rgba(0, 255, 255, ${cell.active * 0.5})`;
-                 ctx.fillRect(x + 2 + offset, y + 2, cellW - 4, cellH - 4);
-                 ctx.fillStyle = `rgba(255, 255, 255, ${cell.active})`;
-                 ctx.beginPath(); ctx.arc(x + cellW/2, y + cellH/2, 2, 0, Math.PI*2); ctx.fill();
-              } else {
-                 ctx.fillStyle = `rgba(0, 255, 255, ${cell.active * 0.4})`;
-                 ctx.fillRect(x + 2, y + 2, cellW - 4, cellH - 4);
-                 ctx.beginPath(); ctx.arc(x + cellW/2, y + cellH/2, 2, 0, Math.PI*2);
-                 ctx.fillStyle = `rgba(255, 255, 255, ${cell.active})`;
-                 ctx.fill();
-                 ctx.strokeStyle = `rgba(0, 255, 200, ${cell.active})`;
-                 ctx.lineWidth = 2;
-                 const s = 4;
-                 ctx.beginPath(); ctx.moveTo(x, y + s); ctx.lineTo(x, y); ctx.lineTo(x + s, y); ctx.stroke();
-                 ctx.beginPath(); ctx.moveTo(x + cellW, y + cellH - s); ctx.lineTo(x + cellW, y + cellH); ctx.lineTo(x + cellW - s, y + cellH); ctx.stroke();
-              }
+              
+              ctx.fillStyle = `rgba(255, 255, 255, ${cell.active * 0.3})`;
+              ctx.fillRect(x + 1, y + 1, cellW - 2, cellH - 2);
+              
+              ctx.strokeStyle = `rgba(255, 255, 255, ${cell.active})`;
+              ctx.lineWidth = 1;
+              ctx.strokeRect(x + 4, y + 4, cellW - 8, cellH - 8);
             }
           });
         };
 
         requestRef.current = requestAnimationFrame(animate);
-        return () => {
-          if (requestRef.current !== null) cancelAnimationFrame(requestRef.current);
-        };
-      }, [isPlaying, sensitivity, loadErrorMsg, visualDecay, chromaticShift, isVisualOnly]); 
-
-      const factoryPresets = presets.filter(p => p.type === 'factory');
-      const userPresets = presets.filter(p => p.type === 'user');
+        return () => { if (requestRef.current !== null) cancelAnimationFrame(requestRef.current); };
+      }, [isPlaying, sensitivity, loadErrorMsg, isVisualOnly, chaosLevel]); 
 
       return (
-        <div style={{
-          width: '100vw',
-          height: '100vh',
-          backgroundColor: '#05080c',
-          color: '#aaccff',
-          position: 'relative',
-          overflow: 'hidden'
-        }}>
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            accept="video/*" 
-            style={{ display: 'none' }} 
-            onChange={handleCustomUpload}
-          />
-
-          {videoSrc && (
-            <video
-              ref={videoRef}
-              key={`${videoSrc}-${corsMode}`}
-              src={videoSrc}
-              muted
-              loop
-              playsInline
-              preload="auto"
-              crossOrigin={corsMode}
-              onError={handleVideoError}
-              style={{
-                position: 'absolute',
-                top: 0, left: 0,
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                zIndex: 0,
-                opacity: 0.7,
-                display: loadErrorMsg || !videoSrc ? 'none' : 'block'
-              }}
-            />
-          )}
-
-          {videoSrc && audioSuspended && !loadErrorMsg && (
-             <div 
-                onClick={togglePlay}
-                style={{
-                 position: 'absolute',
-                 top: '100px', left: '50%',
-                 transform: 'translateX(-50%)',
-                 background: 'rgba(255, 100, 0, 0.8)',
-                 color: '#fff',
-                 padding: '8px 16px',
-                 borderRadius: '20px',
-                 fontFamily: 'Space Mono',
-                 fontSize: '12px',
-                 border: '1px solid #fff',
-                 cursor: 'pointer',
-                 zIndex: 50,
-                 animation: 'pulse 1.5s infinite'
-             }}>
-                 [ AUDIO SUSPENDED // CLICK TO ACTIVATE ]
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#111', color: '#fff' }}>
+          
+          {/* HEADER BAR */}
+          <div style={{
+              height: '40px', background: '#000', borderBottom: '1px solid #222', 
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 1rem',
+              zIndex: 50, flexShrink: 0
+          }}>
+             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontWeight: 600, fontSize: '12px', letterSpacing: '1px' }}>TERRA TONES</span>
+                <span style={{ fontSize: '9px', color: '#666', border: '1px solid #333', padding: '1px 3px' }}>V2.2</span>
              </div>
-          )}
+             <div style={{ display: 'flex', gap: '1rem' }}>
+                <button 
+                    onClick={() => setShowControls(!showControls)} 
+                    style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '10px', cursor: 'pointer', fontFamily: 'JetBrains Mono, monospace' }}
+                >
+                    {showControls ? '[ HIDE INTERFACE ]' : '[ SHOW INTERFACE ]'}
+                </button>
+                <button 
+                    onClick={() => setShowEmbedModal(true)} 
+                    style={{ background: '#fff', border: 'none', color: '#000', fontSize: '10px', cursor: 'pointer', padding: '2px 6px', fontWeight: 600 }}
+                >
+                    EMBED
+                </button>
+             </div>
+          </div>
 
-          {showEmbedModal && (
-            <div style={{
-                position: 'absolute',
-                top: 0, left: 0, width: '100%', height: '100%',
-                background: 'rgba(0,0,0,0.85)',
-                zIndex: 100,
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                backdropFilter: 'blur(5px)'
+          {/* TOP DASHBOARD (SIGNAL BANK + PARAMETERS) */}
+          {showControls && (
+            <div style={{ 
+                background: '#0a0a0a', borderBottom: '1px solid #222', padding: '12px 1rem', 
+                zIndex: 40, flexShrink: 0, maxHeight: '50vh', overflowY: 'auto'
             }}>
-                <div style={{
-                    background: '#0a111a',
-                    border: '1px solid #00ffcc',
-                    padding: '2rem',
-                    maxWidth: '600px',
-                    width: '90%',
-                    position: 'relative',
-                    boxShadow: '0 0 40px rgba(0, 255, 200, 0.2)'
-                }}>
-                    <button 
-                        onClick={() => setShowEmbedModal(false)}
-                        style={{
-                            position: 'absolute', top: '10px', right: '10px',
-                            background: 'transparent', border: 'none', color: '#0ff', fontSize: '20px', cursor: 'pointer'
-                        }}
-                    >✕</button>
-                    <h2 style={{ margin: '0 0 1rem 0', color: '#fff', fontFamily: 'Rajdhani', letterSpacing: '2px' }}>EMBED CODE GENERATOR</h2>
-                    <p style={{ color: '#88aacc', fontFamily: 'Space Mono', fontSize: '12px', marginBottom: '1rem' }}>
-                        Copy this code and paste it into your website's HTML, or use the "Embed" block in Squarespace/WordPress.
-                    </p>
-                    <textarea 
-                        readOnly
-                        style={{
-                            width: '100%', height: '100px', background: '#000', color: '#00ffcc', 
-                            fontFamily: 'monospace', fontSize: '12px', border: '1px solid #334455', padding: '10px',
-                            marginBottom: '1rem'
-                        }}
-                        value={`<iframe src="${window.location.href}" width="100%" height="600" frameborder="0" allow="autoplay; microphone" allowfullscreen></iframe>`}
-                    />
-                    <div style={{ fontSize: '11px', color: '#666', fontFamily: 'Space Mono' }}>
-                        * Tip: Use the "Cinematic Mode" toggle in the app to hide controls for a cleaner embed look.
+                {/* SIGNAL BANK (PRESETS) */}
+                <div style={{ marginBottom: '16px' }}>
+                    <div style={{ fontSize: '9px', color: '#666', marginBottom: '8px', letterSpacing: '1px', display: 'flex', justifyContent: 'space-between' }}>
+                         <span>SIGNAL BANK</span>
+                         <button onClick={() => setAssignMode(!assignMode)} style={{ background: 'transparent', border: 'none', fontSize: '9px', cursor: 'pointer', color: assignMode ? '#fff' : '#444' }}>
+                            {assignMode ? '>> SELECT SLOT TO SAVE <<' : '[ SAVE CURRENT SIGNAL ]'}
+                         </button>
                     </div>
-                </div>
-            </div>
-          )}
-
-          {(!videoSrc || loadErrorMsg) && (
-              <div style={{
-                  position: 'absolute',
-                  top: 0, left: 0, width: '100%', height: '100%',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  background: 'radial-gradient(circle at center, #112233 0%, #05080c 70%)',
-                  zIndex: 10,
-                  pointerEvents: 'auto'
-              }}>
-                 <div style={{ 
-                     border: '1px solid #00ffcc', 
-                     padding: '3rem', 
-                     background: 'rgba(0, 30, 40, 0.8)', 
-                     textAlign: 'center',
-                     boxShadow: '0 0 30px rgba(0, 255, 200, 0.1)',
-                     maxWidth: '500px'
-                 }}>
-                    <h1 style={{ 
-                        color: '#fff', 
-                        margin: '0 0 0.5rem 0', 
-                        fontFamily: 'Rajdhani, sans-serif', 
-                        fontSize: '32px', 
-                        letterSpacing: '4px' 
-                    }}>
-                        AWAITING SIGNAL
-                    </h1>
-                    <p style={{ 
-                        color: '#44aadd', 
-                        fontFamily: 'Space Mono, monospace', 
-                        fontSize: '12px', 
-                        marginBottom: '1rem' 
-                    }}>
-                        UPLOAD VIDEO SOURCE OR SELECT STREAM
-                    </p>
-
-                    {loadErrorMsg && (
-                        <div style={{ 
-                            color: '#ff4444', 
-                            border: '1px solid #ff4444', 
-                            background: 'rgba(50,0,0,0.5)', 
-                            padding: '10px', 
-                            marginBottom: '2rem',
-                            fontFamily: 'Space Mono, monospace',
-                            fontSize: '11px',
-                            textAlign: 'left'
-                        }}>
-                            <strong>⚠ ERROR: {loadErrorMsg}</strong><br/>
-                            <span style={{ color: '#ffaaaa' }}>
-                                Ensure your video files are located in the <strong>public/test-signals</strong> folder.
-                            </span>
-                        </div>
-                    )}
-                    
-                    <div style={{
-                        background: 'rgba(0, 50, 60, 0.6)',
-                        border: '1px dashed #00aa99',
-                        padding: '10px',
-                        marginBottom: '2rem',
-                        color: '#00eecc',
-                        fontFamily: 'Space Mono, monospace',
-                        fontSize: '10px',
-                        textAlign: 'left',
-                        lineHeight: '1.6'
-                    }}>
-                        <strong>HOW TO CONNECT GITHUB VIDEOS (BEST):</strong><br/>
-                        1. Go to your GitHub Repo & click <strong>Add file {'>'} Upload files</strong>.<br/>
-                        2. Drag your MP4s (keep under 25MB for web upload).<br/>
-                        3. After upload, click the file name in the file list.<br/>
-                        4. <strong>Copy the URL</strong> from your browser address bar.<br/>
-                        5. Paste it below.
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
-                        <button 
-                            onClick={() => fileInputRef.current?.click()}
-                            style={{
-                                background: 'rgba(0, 255, 200, 0.2)',
-                                color: '#0ff',
-                                border: '1px solid #0ff',
-                                padding: '16px 32px',
-                                fontFamily: 'Space Mono, monospace',
-                                cursor: 'pointer',
-                                fontSize: '14px',
-                                letterSpacing: '2px',
-                                transition: 'all 0.2s',
-                                width: '100%'
-                            }}
-                        >
-                            [ UPLOAD MP4 FILE ]
-                        </button>
-                        
-                        <div style={{ fontSize: '10px', color: '#6688aa', margin: '8px 0', fontFamily: 'Space Mono' }}>— OR —</div>
-                        
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                            <input 
-                                type="text" 
-                                placeholder="Paste GitHub / Dropbox / Web URL..."
-                                value={streamUrl}
-                                onChange={(e) => setStreamUrl(e.target.value)}
-                                style={{
-                                    flex: 1,
-                                    background: 'rgba(0,0,0,0.5)',
-                                    border: '1px solid #446688',
-                                    color: '#fff',
-                                    padding: '8px',
-                                    fontFamily: 'monospace',
-                                    fontSize: '12px',
-                                    outline: 'none'
-                                }}
-                            />
-                             <button 
-                                onClick={handleStreamSubmit}
-                                style={{
-                                    background: '#446688',
-                                    color: '#fff',
-                                    border: 'none',
-                                    padding: '8px 12px',
-                                    fontFamily: 'Space Mono',
-                                    cursor: 'pointer',
-                                    fontSize: '12px'
+                    <div className="preset-scroll" style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px' }}>
+                        {presets.map(p => (
+                            <button key={p.id} onClick={() => handlePresetClick(p)} 
+                                style={{ 
+                                    padding: '8px 12px', 
+                                    background: assignMode ? '#222' : (videoSrc === p.filename || (!videoSrc && !p.filename)) ? '#fff' : '#111', 
+                                    color: assignMode ? '#fff' : (videoSrc === p.filename || (!videoSrc && !p.filename)) ? '#000' : '#888',
+                                    border: assignMode ? '1px dashed #fff' : '1px solid #333',
+                                    cursor: 'pointer', fontSize: '10px', whiteSpace: 'nowrap', minWidth: '80px', textAlign: 'center'
                                 }}
                             >
-                                STREAM
+                                {p.label}
                             </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* MAIN PARAMETERS GRID */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1.5rem', alignItems: 'end' }}>
+                    <div>
+                        <label style={{ display: 'block', fontSize: '9px', color: '#666', marginBottom: '6px', letterSpacing: '0.5px' }}>INSTRUMENT</label>
+                        <select value={instrument} onChange={e => setInstrumentState(e.target.value)} 
+                            style={{ width: '100%', padding: '6px', background: '#111', color: '#ddd', border: '1px solid #333', fontSize: '11px', fontFamily: 'JetBrains Mono' }}>
+                            {INSTRUMENTS.map(i => <option key={i.value} value={i.value}>{i.label}</option>)}
+                        </select>
+                    </div>
+                    
+                    <SliderCompact label="SENSITIVITY" value={sensitivity} onChange={setSensitivity} display={`${Math.round(sensitivity*100)}%`} />
+                    <SliderCompact label="SPEED" value={(playbackSpeed-0.1)/1.9} onChange={v => setPlaybackSpeed(0.1 + v*1.9)} display={`${playbackSpeed.toFixed(1)}x`} />
+                    
+                    <div style={{ display: 'flex' }}>
+                         <button onClick={togglePlay} 
+                            style={{ 
+                                width: '100%', padding: '8px', fontSize: '10px', letterSpacing: '1px', cursor: 'pointer',
+                                background: isPlaying ? '#ddd' : '#222', color: isPlaying ? '#000' : '#888', border: '1px solid #444' 
+                            }}>
+                            {isPlaying ? 'PAUSE SCAN' : 'RESUME SCAN'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+          )}
+
+          {/* MAIN CANVAS AREA */}
+          <div style={{ flex: 1, position: 'relative', overflow: 'hidden', background: '#050505' }}>
+             <input type="file" ref={fileInputRef} accept="video/*" style={{ display: 'none' }} onChange={handleCustomUpload} />
+             
+             {videoSrc && (
+                <video ref={videoRef} src={videoSrc} muted loop playsInline crossOrigin={corsMode} onError={handleVideoError}
+                style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6, display: loadErrorMsg ? 'none' : 'block' }} />
+             )}
+             
+             <canvas ref={canvasRef} style={{ position: 'absolute', width: '100%', height: '100%' }} />
+
+             {(!videoSrc || loadErrorMsg) && (
+                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#111' }}>
+                    <div style={{ border: '1px solid #333', padding: '2rem', textAlign: 'center', maxWidth: '400px' }}>
+                        <h2 style={{ fontSize: '14px', marginBottom: '1rem', color: '#fff', letterSpacing: '1px' }}>NO SIGNAL</h2>
+                        {loadErrorMsg ? <p style={{color: '#f55', fontSize: '11px'}}>{loadErrorMsg}</p> : <p style={{color: '#666', fontSize: '11px'}}>Select a signal source to begin.</p>}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '1rem' }}>
+                            <button onClick={() => fileInputRef.current?.click()} style={{ padding: '8px', background: '#222', color: '#fff', border: '1px solid #444', cursor: 'pointer', fontSize: '10px' }}>UPLOAD FILE</button>
+                            <div style={{ display: 'flex', gap: '5px' }}>
+                                <input type="text" placeholder="Paste URL..." value={streamUrl} onChange={e=>setStreamUrl(e.target.value)} style={{ flex: 1, background: '#000', border: '1px solid #333', color: '#fff', padding: '4px', fontSize: '10px' }}/>
+                                <button onClick={handleStreamSubmit} style={{ padding: '4px 8px', background: '#fff', color: '#000', border: 'none', cursor: 'pointer', fontSize: '10px' }}>GO</button>
+                            </div>
                         </div>
                     </div>
                  </div>
-              </div>
-          )}
+             )}
 
-          <canvas 
-            ref={canvasRef}
-            style={{
-              position: 'absolute',
-              top: 0, left: 0,
-              width: '100%',
-              height: '100%',
-              display: 'block',
-              zIndex: 1,
-              pointerEvents: 'none'
-            }}
-          />
-          
-          <div style={{
-            position: 'absolute',
-            top: 0, left: 0, right: 0, bottom: 0,
-            pointerEvents: 'none',
-            padding: '2rem',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            zIndex: 20
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', pointerEvents: 'auto' }}>
-              <div>
-                <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 700, letterSpacing: '2px', color: '#fff', textShadow: '0 0 10px rgba(0,255,255,0.5)' }}>
-                  NATURE <span style={{color: '#0ff'}}>SONIFICATION SCORE</span>
-                </h1>
-                <div style={{ fontSize: '12px', color: '#0ff', marginTop: '4px', opacity: 0.7 }}>
-                  V5.0 // VISUAL FX + HYBRID BANK
-                </div>
-                {isVisualOnly && (
-                  <div style={{ marginTop: '8px', color: '#ffaa00', background: 'rgba(50,30,0,0.8)', padding: '4px 8px', fontFamily: 'Space Mono', fontSize: '11px', border: '1px solid #ffaa00' }}>
-                     ⚠ VISUAL ONLY MODE (AUDIO UNAVAILABLE DUE TO BROWSER SECURITY/CORS)
-                  </div>
-                )}
-              </div>
-              
-              <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-                 <div style={{ fontFamily: 'Space Mono, monospace', fontSize: '12px', color: '#5588aa' }}>
-                    <div>GRID: {GRID_COLS}x{GRID_ROWS}</div>
-                    <div>STATUS: {videoSrc ? (isVisualOnly ? 'VISUAL ONLY' : 'ACTIVE') : 'STANDBY'}</div>
-                 </div>
-                 <button 
-                    onClick={() => setShowControls(!showControls)}
-                    style={{
-                        background: 'rgba(0,0,0,0.6)', color: '#0ff', border: '1px solid #334455',
-                        padding: '4px 8px', cursor: 'pointer', fontFamily: 'Space Mono', fontSize: '10px'
-                    }}
-                 >
-                    {showControls ? '[ HIDE CONTROLS ]' : '[ SHOW CONTROLS ]'}
-                 </button>
-              </div>
-            </div>
-
-            {showControls && (
-            <div style={{ 
-              position: 'absolute', 
-              top: '50%', 
-              right: '2rem', 
-              transform: 'translateY(-50%)',
-              width: '260px', 
-              pointerEvents: 'auto',
-              background: 'rgba(5, 10, 20, 0.85)',
-              border: '1px solid #223344',
-              backdropFilter: 'blur(8px)',
-              padding: '1.5rem',
-              borderRadius: '4px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1.5rem',
-              maxHeight: '80vh',
-              overflowY: 'auto'
-            }}>
-               <div style={{ display: 'flex', justifyContent: 'center' }}>
-                    <button 
-                    onClick={() => setVideoSrc(null)}
-                    style={{
-                      width: '100%',
-                      background: selectedVideoId === 'custom' ? 'rgba(0, 255, 200, 0.1)' : 'transparent',
-                      color: selectedVideoId === 'custom' ? '#0ff' : '#6688aa',
-                      border: '1px dashed #445566',
-                      padding: '12px',
-                      fontSize: '11px',
-                      fontFamily: 'Space Mono, monospace',
-                      cursor: 'pointer',
-                      textAlign: 'center',
-                      textTransform: 'uppercase',
-                      letterSpacing: '1px'
-                    }}
-                  >
-                    {selectedVideoId === 'custom' || selectedVideoId === 'stream' ? '>> UPLOAD / STREAM NEW' : '+ UPLOAD / STREAM'}
-                  </button>
-               </div>
-
-               <div style={{ height: '1px', background: '#223344' }} />
-
-               <div>
-                 <h3 style={{ margin: '0 0 1rem 0', fontSize: '14px', color: '#0ff', letterSpacing: '1px' }}>VIDEO PARAMETERS</h3>
-                 <Slider label="PLAYBACK SPEED" value={(playbackSpeed - 0.1) / 1.9} displayValue={`${playbackSpeed.toFixed(1)}x`} onChange={(v) => setPlaybackSpeed(0.1 + v * 1.9)} />
-                 <Slider label="SENSITIVITY" value={sensitivity} displayValue={`${(sensitivity * 100).toFixed(0)}%`} onChange={setSensitivity} />
-               </div>
-
-               <div style={{ height: '1px', background: '#223344' }} />
-               
-               <div>
-                 <h3 style={{ margin: '0 0 1rem 0', fontSize: '14px', color: '#ff00aa', letterSpacing: '1px' }}>VISUAL FX</h3>
-                 <Slider label="VISUAL DECAY" value={visualDecay} displayValue={`${(visualDecay * 100).toFixed(0)}%`} onChange={setVisualDecay} />
-                 <Slider label="CHROMATIC SHIFT" value={chromaticShift} displayValue={`${(chromaticShift * 100).toFixed(0)}%`} onChange={setChromaticShift} />
-               </div>
-
-               <div style={{ height: '1px', background: '#223344' }} />
-
-               <div>
-                 <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '14px', color: isVisualOnly ? '#666' : '#0ff', letterSpacing: '1px' }}>
-                    AUDIO FX {isVisualOnly && '(DISABLED)'}
-                 </h3>
-                 
-                 <div style={{ opacity: isVisualOnly ? 0.3 : 1, pointerEvents: isVisualOnly ? 'none' : 'auto' }}>
-                     <div style={{ marginBottom: '12px' }}>
-                       <div style={{ fontSize: '10px', fontFamily: 'Space Mono, monospace', color: '#88aacc', marginBottom: '4px' }}>INSTRUMENT</div>
-                       <select 
-                         value={instrument} 
-                         onChange={(e) => setInstrumentState(e.target.value)}
-                         style={{
-                           background: 'rgba(0,0,0,0.6)',
-                           color: '#0ff',
-                           border: '1px solid #444',
-                           fontFamily: 'Space Mono, monospace',
-                           fontSize: '12px',
-                           padding: '6px',
-                           width: '100%',
-                           outline: 'none',
-                           cursor: 'pointer'
-                         }}
-                       >
-                         {INSTRUMENTS.map(inst => (
-                           <option key={inst.value} value={inst.value}>{inst.label}</option>
-                         ))}
-                       </select>
-                     </div>
-
-                     <Slider label="FILTER FREQ" value={filterFreq} displayValue={`${(filterFreq * 100).toFixed(0)}%`} onChange={setFilterFreqState} />
-                     <Slider label="DISTORTION" value={distortion} displayValue={`${(distortion * 100).toFixed(0)}%`} onChange={setDistortionState} />
-                     <Slider label="REVERB MIX" value={reverbMix} displayValue={`${(reverbMix * 100).toFixed(0)}%`} onChange={setReverbMix} />
-                     <Slider label="DELAY TIME" value={delayTime} displayValue={`${(delayTime * 100).toFixed(0)}%`} onChange={setDelayTimeState} />
-                     <Slider label="DELAY FEEDBACK" value={delayFeedback} displayValue={`${(delayFeedback * 100).toFixed(0)}%`} onChange={setDelayFeedbackState} />
-                 </div>
-               </div>
-
-               <div style={{ height: '1px', background: '#223344' }} />
-               
-               <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <h3 style={{ margin: 0, fontSize: '14px', color: '#446688', letterSpacing: '1px' }}>TEST SIGNALS</h3>
-                    <button
-                        onClick={() => setAssignMode(!assignMode)}
-                        style={{
-                            background: assignMode ? 'rgba(255, 150, 0, 0.2)' : 'transparent',
-                            color: assignMode ? '#ffaa00' : '#446688',
-                            border: `1px solid ${assignMode ? '#ffaa00' : 'transparent'}`,
-                            padding: '2px 6px',
-                            fontSize: '9px',
-                            fontFamily: 'Space Mono, monospace',
-                            cursor: 'pointer',
-                            letterSpacing: '1px'
-                        }}
-                        title="Click to assign current video to a preset slot"
-                    >
-                        {assignMode ? '>> SELECT SLOT <<' : '[ ASSIGN ]'}
-                    </button>
-                  </div>
-
-                  <div style={{ fontSize: '10px', color: '#6688aa', marginBottom: '4px', fontFamily: 'Space Mono' }}>FACTORY BANK</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '12px' }}>
-                    {factoryPresets.map(video => (
-                      <button 
-                        key={video.id}
-                        onClick={() => handlePresetClick(video)}
-                        style={{
-                          background: assignMode 
-                            ? 'rgba(255, 150, 0, 0.1)' 
-                            : selectedVideoId === video.id ? 'rgba(0, 255, 200, 0.2)' : 'rgba(0,0,0,0.3)',
-                          color: assignMode 
-                            ? '#ffaa00'
-                            : !video.filename ? '#334455' : selectedVideoId === video.id ? '#0ff' : '#446688',
-                          border: `1px solid ${
-                            assignMode 
-                            ? '#ffaa00'
-                            : selectedVideoId === video.id ? '#0ff' : 'transparent'
-                          }`,
-                          padding: '4px 8px',
-                          fontSize: '9px',
-                          fontFamily: 'Space Mono, monospace',
-                          cursor: assignMode || video.filename ? 'pointer' : 'default',
-                          flex: '1 0 40%' 
-                        }}
-                      >
-                        {assignMode ? `OVERWRITE S${video.id.replace('v','')}` : video.label.replace('SECTOR 0', 'S')}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div style={{ fontSize: '10px', color: '#6688aa', marginBottom: '4px', fontFamily: 'Space Mono' }}>USER MEMORY</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '12px' }}>
-                    {userPresets.map(video => (
-                      <button 
-                        key={video.id}
-                        onClick={() => handlePresetClick(video)}
-                        style={{
-                          background: assignMode 
-                            ? 'rgba(255, 150, 0, 0.1)' 
-                            : selectedVideoId === video.id ? 'rgba(0, 255, 200, 0.2)' : 'rgba(0,0,0,0.3)',
-                          color: assignMode 
-                            ? '#ffaa00'
-                            : !video.filename ? '#334455' : selectedVideoId === video.id ? '#0ff' : '#446688',
-                          border: `1px solid ${
-                            assignMode 
-                            ? '#ffaa00'
-                            : selectedVideoId === video.id ? '#0ff' : 'transparent'
-                          }`,
-                          padding: '4px 8px',
-                          fontSize: '9px',
-                          fontFamily: 'Space Mono, monospace',
-                          cursor: assignMode || video.filename ? 'pointer' : 'default',
-                          flex: '1 0 40%' 
-                        }}
-                      >
-                         {assignMode ? `SAVE TO ${video.id.replace('u','M')}` : video.label.replace('MEMORY ', 'M')}
-                      </button>
-                    ))}
-                  </div>
-                  
-                  <div style={{ marginTop: '1rem', borderTop: '1px solid #223344', paddingTop: '1rem' }}>
-                     <button 
-                        onClick={() => setShowEmbedModal(true)}
-                        style={{
-                            background: 'rgba(0, 50, 100, 0.5)', width: '100%', padding: '8px',
-                            color: '#6688aa', border: '1px solid #334455', cursor: 'pointer',
-                            fontFamily: 'Space Mono', fontSize: '11px', textTransform: 'uppercase'
-                        }}
-                     >
-                        &lt;/&gt; GET EMBED CODE
-                     </button>
-                  </div>
-               </div>
-            </div>
-            )}
-
-            {videoSrc && (
-                <div style={{ pointerEvents: 'auto', display: 'flex', alignItems: 'center', gap: '2rem', background: 'rgba(0,0,0,0.7)', padding: '1rem', borderRadius: '4px', border: '1px solid #223344', backdropFilter: 'blur(10px)', width: 'fit-content' }}>
-                <Button onClick={togglePlay} active={isPlaying}>
-                    {isPlaying ? 'STOP SCAN' : 'RESUME SCAN'}
-                </Button>
-
-                <div style={{ fontFamily: 'Space Mono, monospace', fontSize: '12px', color: isPlaying ? '#0ff' : '#556677' }}>
-                    STATUS: {isPlaying ? (isVisualOnly ? 'VISUAL PLAYBACK' : 'TRACKING MOTION...') : 'PAUSED'}
-                </div>
+            {videoSrc && audioSuspended && !loadErrorMsg && (
+                <div onClick={togglePlay} style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', background: '#f00', color: '#fff', padding: '5px 10px', fontSize: '10px', cursor: 'pointer', zIndex: 50 }}>
+                    AUDIO OFF - CLICK TO START
                 </div>
             )}
           </div>
+
+          {/* BOTTOM DASHBOARD (FX ONLY) */}
+          {showControls && (
+            <div style={{ 
+                height: 'auto', maxHeight: '35vh', background: '#0a0a0a', borderTop: '1px solid #222', 
+                zIndex: 40, flexShrink: 0, display: 'flex', flexDirection: 'column'
+            }}>
+                <div style={{ padding: '1rem', overflowY: 'auto' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', borderBottom: '1px solid #222', paddingBottom: '8px' }}>
+                        <span style={{ fontSize: '10px', color: '#fff', letterSpacing: '1px' }}>AUDIO PROCESSOR</span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '2rem' }}>
+                        <div>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: '10px', color: '#666', letterSpacing: '1px' }}>GENERATIVE</h4>
+                            <SliderCompact label="BIO-CHAOS" value={chaosLevel} onChange={setChaosLevel} display={`${Math.round(chaosLevel*100)}%`} />
+                            <SliderCompact label="HARMONIC DRIFT" value={harmonicDrift} onChange={setHarmonicDriftState} display={`${Math.round(harmonicDrift*100)}%`} />
+                        </div>
+                        <div>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: '10px', color: '#666', letterSpacing: '1px' }}>EFFECTS CHAIN</h4>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <SliderCompact label="REVERB" value={reverbMix} onChange={setReverbMix} display={`${Math.round(reverbMix*100)}%`} />
+                                <SliderCompact label="DELAY" value={delayTime} onChange={setDelayTimeState} display={`${Math.round(delayTime*100)}%`} />
+                                <SliderCompact label="FILTER" value={filterFreq} onChange={setFilterFreqState} display={`${Math.round(filterFreq*100)}%`} />
+                                <SliderCompact label="DISTORT" value={distortion} onChange={setDistortionState} display={`${Math.round(distortion*100)}%`} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+          )}
+
+          {/* EMBED MODAL */}
+          {showEmbedModal && (
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ background: '#fff', color: '#000', padding: '2rem', maxWidth: '500px', width: '90%' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                        <h2 style={{ fontSize: '14px', margin: 0 }}>EMBED CODE</h2>
+                        <button onClick={() => setShowEmbedModal(false)} style={{ background: 'transparent', border: 'none', fontSize: '16px', cursor: 'pointer' }}>✕</button>
+                    </div>
+                    <p style={{ fontSize: '12px', color: '#666', marginBottom: '1rem' }}>For Squarespace/Wix, use a "Code Block" and paste this:</p>
+                    <textarea readOnly style={{ width: '100%', height: '80px', background: '#f5f5f5', border: '1px solid #ddd', padding: '10px', fontSize: '11px', fontFamily: 'monospace' }}
+                        value={`<iframe src="${window.location.href}" width="100%" height="800" frameborder="0" allow="autoplay; microphone" allowfullscreen style="display: block; width: 100%;"></iframe>`}
+                    />
+                </div>
+            </div>
+          )}
+
         </div>
       );
     };
 
-    const Button = ({ onClick, children, active }) => (
-      <button 
-        onClick={onClick}
-        style={{
-          background: active ? 'rgba(0, 255, 200, 0.2)' : 'rgba(0,0,0,0.6)',
-          color: active ? '#0ff' : '#666',
-          border: `1px solid ${active ? '#0ff' : '#444'}`,
-          padding: '10px 24px',
-          fontSize: '14px',
-          fontFamily: 'Rajdhani, sans-serif',
-          fontWeight: 700,
-          letterSpacing: '1px',
-          cursor: 'pointer',
-          textTransform: 'uppercase',
-          transition: 'all 0.2s ease',
-          backdropFilter: 'blur(4px)',
-          whiteSpace: 'nowrap'
-        }}
-      >
-        {children}
-      </button>
-    );
-
-    const Slider = ({ label, value, onChange, displayValue }) => (
-      <div style={{ marginBottom: '12px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', fontFamily: 'Space Mono, monospace', color: '#88aacc', marginBottom: '4px' }}>
-          <span>{label}</span>
-          <span>{displayValue}</span>
+    // Compact Slider with increased vertical spacing to prevent text overlap
+    const SliderCompact = ({ label, value, onChange, display }) => (
+        <div style={{ marginBottom: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', marginBottom: '6px', color: '#666' }}>
+                <span>{label}</span>
+                <span>{display}</span>
+            </div>
+            <input type="range" min="0" max="1" step="0.01" value={value} onChange={e => onChange(parseFloat(e.target.value))} 
+                   style={{ width: '100%', accentColor: '#fff', height: '2px', background: '#333', appearance: 'none', cursor: 'pointer', display: 'block' }} />
         </div>
-        <input 
-          type="range" 
-          min="0" 
-          max="1" 
-          step="0.01" 
-          value={value} 
-          onChange={(e) => onChange(parseFloat(e.target.value))}
-          style={{
-            width: '100%',
-            accentColor: '#0ff',
-            background: 'rgba(255,255,255,0.1)',
-            height: '2px',
-            appearance: 'none',
-            outline: 'none',
-            cursor: 'pointer'
-          }} 
-        />
-      </div>
     );
 
     const container = document.getElementById('root');
